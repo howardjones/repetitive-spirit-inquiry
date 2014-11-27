@@ -59,6 +59,7 @@ $(document).ready( function () {
         "two": "deeppink",
         "three": "mediumorchid",
         "four": "mediumpurple",
+        "extras": "#888"
     };   
     
     var positions = [
@@ -87,19 +88,35 @@ $(document).ready( function () {
         {style: "four", x: -4, y: 2},
         {style: "four", x: -5, y: 1},
         {style: "four", x: -6, y: 0},
-        {style: "four", x: 4, y: 2},
-        {style: "four", x: 5, y: 1},
-        {style: "four", x: 6, y: 0},
-        {style: "four", x: -5, y: -1}
+        {style: "four", x: -3, y: -3},
+        {style: "four", x: -1, y: -3},        
+        {style: "four", x: -5, y: -1},
+        {style: "four", x: -4, y: -2},
+        
+        {style: "extras", x: 1, y: -3},
+        {style: "extras", x: 3, y: -3},
+        {style: "extras", x: 4, y: -2},
+        {style: "extras", x: 5, y: -1},
+        {style: "extras", x: 6, y: 0},
+        
+        {style: "extras", x: 5, y: 1},
+        {style: "extras", x: 4, y: 2},
+        {style: "extras", x: 3, y: 3},
+        {style: "extras", x: 1, y: 3},
+        {style: "extras", x: -1, y: 3},
+        
+        {style: "extras", x: -3, y: 3}
+        
     ];
-   
     
+   
+
     var paper = Raphael(0, 100, 512, 512);
 
     var layout = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffle();
  
-    var scale = 32;
-    var offset = 256;
+    var scale = 30;
+    var offset = 280;
     
     var energy_label = paper.text(offset, 20, current_energy);
     energy_label.attr("font-size", scale*0.7);
@@ -116,8 +133,19 @@ $(document).ready( function () {
         pos.circle.attr("fill", colours[pos.style]);
         pos.circle.attr("stroke-width", 2);
         pos.circle.attr("stroke-color", "black");
+
+        var label;
+        if (i<26) {
+            label = layout.charAt(i);
+        } else {
+            label = i-26;
+            
+            if (i==36) {
+                label = "Bye";
+            }
+        }
         
-        pos.label = paper.text(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset, layout.charAt(i) );
+        pos.label = paper.text(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset, label);
         pos.label.attr("font-size", scale*0.7);
         pos.label.attr("font-weight", "bold");
         pos.label.attr("font-family", "gill sans");

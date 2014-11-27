@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js" type="application/javascript"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js" type="application/javascript"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js" type="application/javascript"></script>
+</head>
+<body>
+<h1>Repetitive Spirit Enquiry</h1>
+<h2>All Client Side</h2>
+
+
+<script type="application/javascript">
+
+String.prototype.shuffle = function () {
+    var a = this.split(""),
+        n = a.length;
+
+    for(var i = n - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i];
+        a[i] = a[j];
+        a[j] = tmp;
+    }
+    return a.join("");
+}
+
+function precalculate_distances(positions, scalex, scaley) {
+
+    var n,m,distance,dx,dy;
+    var distances = new Array(26);
+
+    for (n=0; n<26; n++) {
+        distances[n] = new Array(26);
+        
+        for (m=0; m<26; m++) {
+            if(m >= n) {
+                dx = (positions[n].x - positions[m].x) * scalex;
+                dy = (positions[n].y - positions[m].y) * scaley;
+                distances[n][m] = Math.sqrt(dx*dx + dy*dy);                
+            } else {
+                distances[n][m] = distances[m][n];
+            }
+        }
+    }
+    return(distances);
+}
+
+$(document).ready( function () {   
+
+    var temperature = 100000;
+    var cooling_rate = 0.001;
+    var current_energy = 99999999999;
+
+    var inter_row = 1.732;
+    
+    var colours = {
+        "one": "crimson",
+        "two": "deeppink",
+        "three": "mediumorchid",
+        "four": "mediumpurple",
+    };   
+    
+    var positions = [
+        {style: "one", x: 0, y: 0},
+        
+        {style: "two", x: -1, y: 1},
+        {style: "two", x: 1, y: 1},
+        {style: "two", x: 2, y: 0},
+        {style: "two", x: 1, y: -1},
+        {style: "two", x: -1, y: -1},
+        {style: "two", x: -2, y: 0},
+        
+        {style: "three", x: -2, y: 2},
+        {style: "three", x: 0, y: 2},
+        {style: "three", x: 2, y: 2},
+        {style: "three", x: 3, y: 1},
+        {style: "three", x: 4, y: 0},
+        {style: "three", x: 3, y: -1},
+        {style: "three", x: 2, y: -2},
+        {style: "three", x: 0, y: -2},
+        {style: "three", x: -2, y: -2},
+        {style: "three", x: -3, y: -1},
+        {style: "three", x: -4, y: 0},
+        {style: "three", x: -3, y: 1},        
+        
+        {style: "four", x: -4, y: 2},
+        {style: "four", x: -5, y: 1},
+        {style: "four", x: -6, y: 0},
+        {style: "four", x: 4, y: 2},
+        {style: "four", x: 5, y: 1},
+        {style: "four", x: 6, y: 0},
+        {style: "four", x: -5, y: -1}
+    ];
+   
+    
+    var paper = Raphael(0, 100, 512, 512);
+
+    var layout = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffle();
+ 
+    var scale = 32;
+    var offset = 256;
+    
+    var energy_label = paper.text(offset, 20, current_energy);
+    energy_label.attr("font-size", scale*0.7);
+    energy_label.attr("fill", "silver");
+    
+    var temperature_label = paper.text(offset, 40, temperature);
+    temperature_label.attr("font-size", scale*0.7);
+    temperature_label.attr("fill", "silver");
+
+    var i = 0;
+    
+    _.each(positions, function(pos) { 
+        pos.circle = paper.circle(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset , scale);
+        pos.circle.attr("fill", colours[pos.style]);
+        pos.circle.attr("stroke-width", 2);
+        pos.circle.attr("stroke-color", "black");
+        
+        pos.label = paper.text(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset, layout.charAt(i) );
+        pos.label.attr("font-size", scale*0.7);
+        pos.label.attr("font-weight", "bold");
+        pos.label.attr("font-family", "gill sans");
+        i++;
+    });
+    
+    var distances = precalculate_distances(positions, 1, inter_row);
+
+    
+});
+
+</script>
+</body>
+</html>

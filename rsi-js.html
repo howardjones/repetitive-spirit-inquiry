@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js" type="application/javascript"></script>
-<script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js" type="application/javascript"></script>
-<script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js" type="application/javascript"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js" type="application/javascript"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js" type="application/javascript"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/raphael/2.1.2/raphael-min.js" type="application/javascript"></script>
+<style type="text/css">
+    
+
+</style>
 </head>
 <body>
 <h1>Repetitive Spirit Enquiry</h1>
 <h2>All Client Side</h2>
-
 
 <script type="application/javascript">
 
@@ -23,108 +26,311 @@ String.prototype.shuffle = function () {
         a[j] = tmp;
     }
     return a.join("");
-}
+};
 
-function precalculate_distances(positions, scalex, scaley) {
+// knowledge of the actual physical layout sits in here
+var Board = (function () {
 
-    var n,m,distance,dx,dy;
-    var distances = new Array(26);
+    var positions;
+    var inter_row = 2.0 * Math.sin(Math.PI/3.0);
+    var layout; // character-based layout string
 
-    for (n=0; n<26; n++) {
-        distances[n] = new Array(26);
+    function _init(options) {
+        positions = [
+            {style: "one", x: 0, y: 0},
+            
+            {style: "two", x: -1, y: 1},
+            {style: "two", x: 1, y: 1},
+            {style: "two", x: 2, y: 0},
+            {style: "two", x: 1, y: -1},
+            {style: "two", x: -1, y: -1},
+            {style: "two", x: -2, y: 0},
+            
+            {style: "three", x: -2, y: 2},
+            {style: "three", x: 0, y: 2},
+            {style: "three", x: 2, y: 2},
+            {style: "three", x: 3, y: 1},
+            {style: "three", x: 4, y: 0},
+            {style: "three", x: 3, y: -1},
+            {style: "three", x: 2, y: -2},
+            {style: "three", x: 0, y: -2},
+            {style: "three", x: -2, y: -2},
+            {style: "three", x: -3, y: -1},
+            {style: "three", x: -4, y: 0},
+            {style: "three", x: -3, y: 1},        
+            
+            {style: "four", x: -4, y: 2},
+            {style: "four", x: -5, y: 1},
+            {style: "four", x: -6, y: 0},
+            {style: "four", x: 4, y: 2},
+            {style: "four", x: 5, y: 1},
+            {style: "four", x: 6, y: 0},
+            {style: "four", x: -5, y: -1}
+        ];
         
-        for (m=0; m<26; m++) {
-            if(m >= n) {
-                dx = (positions[n].x - positions[m].x) * scalex;
-                dy = (positions[n].y - positions[m].y) * scaley;
-                distances[n][m] = Math.sqrt(dx*dx + dy*dy);                
-            } else {
-                distances[n][m] = distances[m][n];
-            }
-        }
+        // fix up the scaling for the hex grid.
+        // at least the list above is readable
+        _.each(positions, function(pos) {
+            pos.y = pos.y * inter_row;
+        });
+        
+        // precalc the distances we'll need to figure out scores for a layout
+        _precalculate_distances(positions);
+        
+        console.dir(positions[2]);
     }
-    return(distances);
-}
+    
+    function _distance(position1, position2) {
+        return 0.0;
+    }
+    
+    function _draw(paper, options) {
+
+        var config = _.defaults(options || {}, {
+            scale: 32,
+            offset: 256
+        });
+        
+        layout = "ABCDEFGHIJKLMNOPQRSTUVWCXYS";
+        
+        var colours = {
+            "one": "crimson",
+            "two": "deeppink",
+            "three": "mediumorchid",
+            "four": "mediumpurple",
+        };   
+
+        i = 0;
+        _.each(positions, function(pos) { 
+            var x = pos.x * config.scale * 1.1 + config.offset;
+            var y = pos.y * config.scale * 1.1 + config.offset;
+            pos.circle = paper.circle(x, y , config.scale);
+            pos.circle.attr("fill", colours[pos.style]);
+            pos.circle.attr("stroke-width", 2);
+            pos.circle.attr("stroke-color", "black");
+
+            pos.label = paper.text(x, y, layout.charAt(i) );
+            pos.label.attr("font-size", config.scale*0.7);
+            pos.label.attr("font-weight", "bold");
+            pos.label.attr("font-family", "gill sans");
+
+            i++;
+        });
+    }
+
+    function _precalculate_distances(positions) {
+    
+        var m, dx, dy;
+        
+        _.each(positions, function(pos) {
+            pos.distances = new Array(26);
+            
+            for (m=0; m<26; m++) {
+                dx = (positions[m].x - pos.x);
+                dy = (positions[m].y - pos.y);
+                pos.distances[m] = Math.sqrt(dx*dx + dy*dy);                
+            }
+        });
+    }
+
+
+    return {
+        Initialize: function (options) {
+            _init(options);
+        },
+        Draw: function (paper, options) {
+            return _draw(paper, options);
+        },
+        Distance: function (a,b) {
+            return _distance(a,b);
+        }
+    };
+
+})();
+
+var WordList = (function () {
+    var words = [],
+        pairs = {};
+
+    function _init(options) {
+        var config = _.defaults(options || {}, {
+            list: "dd.json"
+        });
+        
+        
+    }
+        
+    return {
+        Initialize: function (options) {
+            _init(options);
+        }
+    };
+
+})();
+
+/**
+ * @author Francisco Soto <ebobby@gmail.com>
+ */
+var SimulatedAnnealing = (function () {
+    var coolingFactor            = 0.0,
+        stabilizingFactor        = 0.0,
+        freezingTemperature      = 0.0,
+        currentSystemEnergy      = 0.0,
+        currentSystemTemperature = 0.0,
+        currentStabilizer        = 0.0,
+        
+        generateNewSolution      = null,
+        generateNeighbor         = null,
+        acceptNeighbor           = null;
+     
+     function _init (options) {
+        coolingFactor            = options.coolingFactor;
+        stabilizingFactor        = options.stabilizingFactor;
+        freezingTemperature      = options.freezingTemperature;
+        generateNewSolution      = options.generateNewSolution;
+        generateNeighbor         = options.generateNeighbor;
+        acceptNeighbor           = options.acceptNeighbor;
+
+        currentSystemEnergy      = generateNewSolution();
+        currentSystemTemperature = options.initialTemperature;
+        currentStabilizer        = options.initialStabilizer;
+    }
+    
+    
+    function _probabilityFunction (temperature, delta) {
+        if (delta < 0) {
+            return true;
+        }
+
+        var C = Math.exp(-delta / temperature);
+        var R = Math.random();
+
+        if (R < C) {
+            return true;
+        }
+
+        return false;
+    }
+    
+    function _doSimulationStep () {
+        if (currentSystemTemperature > freezingTemperature) {
+            for (var i = 0; i < currentStabilizer; i++) {
+                var newEnergy = generateNeighbor(),
+                    energyDelta = newEnergy - currentSystemEnergy;
+
+                if (_probabilityFunction(currentSystemTemperature, energyDelta)) {
+                    acceptNeighbor();
+                    currentSystemEnergy = newEnergy;
+                }
+            }
+            currentSystemTemperature = currentSystemTemperature - coolingFactor;
+            currentStabilizer = currentStabilizer * stabilizingFactor;
+            return false;
+        }
+        currentSystemTemperature = freezingTemperature;
+        return true;
+    }
+    
+    return {
+        Initialize: function (options) {
+            _init(options);
+        },
+
+        Step: function () {
+            return _doSimulationStep();
+        },
+
+        GetCurrentEnergy: function () {
+            return currentSystemEnergy;
+        },
+
+        GetCurrentTemperature: function () {
+            return currentSystemTemperature;
+        }
+    };
+        
+})();
+
 
 $(document).ready( function () {   
-
-    var temperature = 100000;
-    var cooling_rate = 0.001;
-    var current_energy = 99999999999;
-
-    var inter_row = 1.732;
-    
-    var colours = {
-        "one": "crimson",
-        "two": "deeppink",
-        "three": "mediumorchid",
-        "four": "mediumpurple",
-    };   
-    
-    var positions = [
-        {style: "one", x: 0, y: 0},
-        
-        {style: "two", x: -1, y: 1},
-        {style: "two", x: 1, y: 1},
-        {style: "two", x: 2, y: 0},
-        {style: "two", x: 1, y: -1},
-        {style: "two", x: -1, y: -1},
-        {style: "two", x: -2, y: 0},
-        
-        {style: "three", x: -2, y: 2},
-        {style: "three", x: 0, y: 2},
-        {style: "three", x: 2, y: 2},
-        {style: "three", x: 3, y: 1},
-        {style: "three", x: 4, y: 0},
-        {style: "three", x: 3, y: -1},
-        {style: "three", x: 2, y: -2},
-        {style: "three", x: 0, y: -2},
-        {style: "three", x: -2, y: -2},
-        {style: "three", x: -3, y: -1},
-        {style: "three", x: -4, y: 0},
-        {style: "three", x: -3, y: 1},        
-        
-        {style: "four", x: -4, y: 2},
-        {style: "four", x: -5, y: 1},
-        {style: "four", x: -6, y: 0},
-        {style: "four", x: 4, y: 2},
-        {style: "four", x: 5, y: 1},
-        {style: "four", x: 6, y: 0},
-        {style: "four", x: -5, y: -1}
-    ];
    
-    
     var paper = Raphael(0, 100, 512, 512);
 
     var layout = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffle();
- 
-    var scale = 32;
-    var offset = 256;
-    
-    var energy_label = paper.text(offset, 20, current_energy);
-    energy_label.attr("font-size", scale*0.7);
-    energy_label.attr("fill", "silver");
-    
-    var temperature_label = paper.text(offset, 40, temperature);
-    temperature_label.attr("font-size", scale*0.7);
-    temperature_label.attr("fill", "silver");
 
-    var i = 0;
-    
-    _.each(positions, function(pos) { 
-        pos.circle = paper.circle(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset , scale);
-        pos.circle.attr("fill", colours[pos.style]);
-        pos.circle.attr("stroke-width", 2);
-        pos.circle.attr("stroke-color", "black");
+    WordList.Initialize({ list: "words.json" });
+    Board.Initialize();
+    Board.Draw(paper);
+
+    if(1==0) {
+            
+            
+        var inter_row = 1.732;
         
-        pos.label = paper.text(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset, layout.charAt(i) );
-        pos.label.attr("font-size", scale*0.7);
-        pos.label.attr("font-weight", "bold");
-        pos.label.attr("font-family", "gill sans");
-        i++;
-    });
+        var colours = {
+            "one": "crimson",
+            "two": "deeppink",
+            "three": "mediumorchid",
+            "four": "mediumpurple",
+        };   
+        
+        var positions = [
+            {style: "one", x: 0, y: 0},
+            
+            {style: "two", x: -1, y: 1},
+            {style: "two", x: 1, y: 1},
+            {style: "two", x: 2, y: 0},
+            {style: "two", x: 1, y: -1},
+            {style: "two", x: -1, y: -1},
+            {style: "two", x: -2, y: 0},
+            
+            {style: "three", x: -2, y: 2},
+            {style: "three", x: 0, y: 2},
+            {style: "three", x: 2, y: 2},
+            {style: "three", x: 3, y: 1},
+            {style: "three", x: 4, y: 0},
+            {style: "three", x: 3, y: -1},
+            {style: "three", x: 2, y: -2},
+            {style: "three", x: 0, y: -2},
+            {style: "three", x: -2, y: -2},
+            {style: "three", x: -3, y: -1},
+            {style: "three", x: -4, y: 0},
+            {style: "three", x: -3, y: 1},        
+            
+            {style: "four", x: -4, y: 2},
+            {style: "four", x: -5, y: 1},
+            {style: "four", x: -6, y: 0},
+            {style: "four", x: 4, y: 2},
+            {style: "four", x: 5, y: 1},
+            {style: "four", x: 6, y: 0},
+            {style: "four", x: -5, y: -1}
+        ];
+
+        
+        var energy_label = paper.text(offset, 20, current_energy);
+        energy_label.attr("font-size", scale*0.7);
+        energy_label.attr("fill", "silver");
+        
+        var temperature_label = paper.text(offset, 40, temperature);
+        temperature_label.attr("font-size", scale*0.7);
+        temperature_label.attr("fill", "silver");
     
-    var distances = precalculate_distances(positions, 1, inter_row);
+        var i = 0;
+        
+        _.each(positions, function(pos) { 
+            pos.circle = paper.circle(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset , scale);
+            pos.circle.attr("fill", colours[pos.style]);
+            pos.circle.attr("stroke-width", 2);
+            pos.circle.attr("stroke-color", "black");
+            
+            pos.label = paper.text(pos.x * scale * 1.1 + offset, pos.y * inter_row * scale * 1.1 + offset, layout.charAt(i) );
+            pos.label.attr("font-size", scale*0.7);
+            pos.label.attr("font-weight", "bold");
+            pos.label.attr("font-family", "gill sans");
+            i++;
+        });
+    }
+    
 
     
 });

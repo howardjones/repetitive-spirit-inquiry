@@ -59,13 +59,30 @@ var Board = (function () {
             {style: "three", x: -4, y: 0},
             {style: "three", x: -3, y: 1},        
             
-            {style: "four", x: -4, y: 2},
-            {style: "four", x: -5, y: 1},
+            {style: "four", x: -3, y: 3},
+            {style: "four", x: -1, y: 3},
+            {style: "four", x: 1, y: 3},
+            {style: "four", x: 3, y: 3},
+            
             {style: "four", x: -6, y: 0},
-            {style: "four", x: 4, y: 2},
-            {style: "four", x: 5, y: 1},
-            {style: "four", x: 6, y: 0},
-            {style: "four", x: -5, y: -1}
+            {style: "four", x: -5, y: 1},
+            {style: "four", x: -4, y: 2},
+            
+            {style: "extra", x: -3, y: -3},
+            {style: "extra", x: -1, y: -3},
+            {style: "extra", x: 1, y: -3},
+            {style: "extra", x: 3, y: -3},
+            
+            {style: "extra", x: 6, y: 0},
+            
+            {style: "extra", x: -5, y: -1},
+            {style: "extra", x: 5, y: 1},
+            {style: "extra", x: 5, y: -1},
+            
+            {style: "extra", x: -4, y: -2},
+            {style: "extra", x: 4, y: 2},
+            {style: "extra", x: 4, y: -2},
+        
         ];
         
         // fix up the scaling for the hex grid.
@@ -91,13 +108,15 @@ var Board = (function () {
             offset: 256
         });
         
-        layout = "ABCDEFGHIJKLMNOPQRSTUVWCXYS";
+        layout = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffle();
+        layout = layout + "0123456789#";
         
         var colours = {
             "one": "crimson",
             "two": "deeppink",
             "three": "mediumorchid",
             "four": "mediumpurple",
+            "extra": "silver",
         };   
 
         i = 0;
@@ -106,13 +125,13 @@ var Board = (function () {
             var y = pos.y * config.scale * 1.1 + config.offset;
             pos.circle = paper.circle(x, y , config.scale);
             pos.circle.attr("fill", colours[pos.style]);
-            pos.circle.attr("stroke-width", 2);
+            pos.circle.attr("stroke-width", 0);
             pos.circle.attr("stroke-color", "black");
 
             pos.label = paper.text(x, y, layout.charAt(i) );
             pos.label.attr("font-size", config.scale*0.7);
-            pos.label.attr("font-weight", "bold");
-            pos.label.attr("font-family", "gill sans");
+            pos.label.attr("font-weight", "light");
+            pos.label.attr("font-family", "Helvetica");
 
             i++;
         });
@@ -121,11 +140,12 @@ var Board = (function () {
     function _precalculate_distances(positions) {
     
         var m, dx, dy;
+        var n = positions.length;
         
         _.each(positions, function(pos) {
-            pos.distances = new Array(26);
+            pos.distances = new Array(n);
             
-            for (m=0; m<26; m++) {
+            for (m=0; m<n; m++) {
                 dx = (positions[m].x - pos.x);
                 dy = (positions[m].y - pos.y);
                 pos.distances[m] = Math.sqrt(dx*dx + dy*dy);                
@@ -155,6 +175,55 @@ var WordList = (function () {
     function _init(options) {
         var config = _.defaults(options || {}, {
             list: "dd.json"
+        });
+        
+        console.log("Loading wordlist");
+        
+        $.ajax({
+          url: config.list,
+          dataType:'json',
+          async:false,
+          success:function(data){
+              
+            var max_frequency;
+              
+            console.log("loaded " + _.size(data.words) + " words.");
+            words = data.words;
+            
+            // convert the frequencies to an actual number
+            _.each(words, function(value, key, list){
+                list[key].frequency = parseInt(list[key].frequency);
+            });
+            
+            // find the largest frequency, so we can scale the weights below
+            max_frequency = _.max(_.keys(words), function(word){ return words[word].frequency; });
+            max_frequency = words[max_frequency].frequency;
+            console.log(max_frequency);
+            
+            // process each word, breaking it into letter-pairs and tracking their frequency
+            _.each(words, function(value, key, list){
+                var i, pair;
+                var word = key;
+                // Calculate the weight of this word (its relative frequency)
+                var word_score = value.frequency / max_frequency;
+                words[word].score = word_score;
+                
+                // build up the frequencies of letter-pairs, weighted by the frequency of the words they are in
+                for (i = 0; i < (word.length-1); i++) {
+                    pair = word.substring(i, i+2);
+                    if (!pairs.hasOwnProperty(pair)) {
+                        pairs[pair] = 0;
+                    }
+                    pairs[pair] += word_score;
+                }
+            });            
+            
+            console.log("Processed " + _.size(pairs) +  " pairs");
+            console.log(pairs);
+          },
+          error:function(xhr, errormessage, errordetail) {
+              console.log("Failed - " + errormessage);
+          }
         });
         
         
@@ -255,9 +324,6 @@ var SimulatedAnnealing = (function () {
 $(document).ready( function () {   
    
     var paper = Raphael(0, 100, 512, 512);
-
-    var layout = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffle();
- 
 
     WordList.Initialize({ list: "words.json" });
     Board.Initialize();

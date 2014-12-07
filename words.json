@@ -1,7 +1,6 @@
 {
-   "" : {
-      "frequency" : "11072"
-   },
+   
+   "words": {
    "sodium" : {
       "frequency" : "7998"
    },
@@ -13010,4 +13009,4 @@
    "totally" : {
       "frequency" : "18720"
    }
-}
+} }

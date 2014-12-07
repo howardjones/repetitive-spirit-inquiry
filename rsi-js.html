@@ -32,12 +32,19 @@ String.prototype.shuffle = function () {
     return a.join("");
 };
 
+function setCharAt(str,index,chr) {
+    if(index > str.length-1) return str;
+    return str.substr(0,index) + chr + str.substr(index+1);
+}
+
+
 // knowledge of the actual physical layout sits in here
 var Board = (function () {
 
     var positions;
     var inter_row = 2.0 * Math.sin(Math.PI/3.0);
     var layout; // character-based layout string
+    var hasDrawn = false;
 
     function _init(options) {
         positions = [
@@ -96,14 +103,36 @@ var Board = (function () {
             pos.y = pos.y * inter_row;
         });
         
+        layout = options.layout || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        
         // precalc the distances we'll need to figure out scores for a layout
         _precalculate_distances(positions);
         
         console.dir(positions[2]);
     }
     
+    function _set_layout(newLayout) {
+        
+        var drawing_layout;
+        
+        if (layout != newLayout) {
+            layout = newLayout;
+            
+            drawing_layout = layout + "0123456789#";
+            
+            if (hasDrawn) {
+                console.log("Layout changed, need to redraw: " + drawing_layout);
+                i = 0;
+                _.each(positions, function(pos) { 
+                    pos.label.attr("text", drawing_layout.charAt(i));
+                    i++;
+                });
+            }
+        }
+    }
+    
     function _distance(position1, position2) {
-        return 0.0;
+        return positions[position1].distances[position2];
     }
     
     function _draw(paper, options) {
@@ -112,9 +141,8 @@ var Board = (function () {
             scale: 32,
             offset: 256
         });
+        var drawing_layout;
         
-        layout = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffle();
-        layout = layout + "0123456789#";
         
         var colours = {
             "one": "crimson",
@@ -123,6 +151,8 @@ var Board = (function () {
             "four": "mediumpurple",
             "extra": "silver",
         };   
+        
+        drawing_layout = layout + "0123456789#";
 
         i = 0;
         _.each(positions, function(pos) { 
@@ -133,13 +163,15 @@ var Board = (function () {
             pos.circle.attr("stroke-width", 0);
             pos.circle.attr("stroke-color", "black");
 
-            pos.label = paper.text(x, y, layout.charAt(i) );
+            pos.label = paper.text(x, y, drawing_layout.charAt(i) );
             pos.label.attr("font-size", config.scale*0.7);
             pos.label.attr("font-weight", "light");
             pos.label.attr("font-family", "Helvetica");
 
             i++;
         });
+        
+        hasDrawn = true;
     }
 
     function _precalculate_distances(positions) {
@@ -165,6 +197,9 @@ var Board = (function () {
         },
         Draw: function (paper, options) {
             return _draw(paper, options);
+        },
+        SetLayout: function (newLayout) {
+            return _set_layout(newLayout);
         },
         Distance: function (a,b) {
             return _distance(a,b);
@@ -228,14 +263,15 @@ var WordList = (function () {
               console.log("Failed - " + errormessage);
           }
         });
-        
-        
     }
-        
+    
     return {
         Initialize: function (options) {
-            _init(options);
-        }
+            return _init(options);
+        },
+        
+        pairs: pairs,    
+        
     };
 
 })();
@@ -292,8 +328,12 @@ var SimulatedAnnealing = (function () {
             for (var i = 0; i < currentStabilizer; i++) {
                 var newEnergy = generateNeighbor(),
                     energyDelta = newEnergy - currentSystemEnergy;
+                iterations++;
 
+                console.log(newEnergy + " " + currentSystemEnergy + " " + energyDelta);
+                
                 if (_probabilityFunction(currentSystemTemperature, energyDelta)) {
+                    console.log("ACCEPT");
                     acceptNeighbor();
                     currentSystemEnergy = newEnergy;
                 }
@@ -304,6 +344,10 @@ var SimulatedAnnealing = (function () {
         }
         currentSystemTemperature = freezingTemperature;
         return true;
+    }
+    
+    function _getIterationCount() {
+        return iterations;
     }
     
     return {
@@ -319,6 +363,10 @@ var SimulatedAnnealing = (function () {
             return currentSystemEnergy;
         },
 
+        GetIterationCount: function () {
+            return _getIterationCount();
+        },
+
         GetCurrentTemperature: function () {
             return currentSystemTemperature;
         }
@@ -328,12 +376,57 @@ var SimulatedAnnealing = (function () {
 
 var RSI = function () {
     
-    var layout;
+    var currentLayout, newLayout;
+    var board;
+    var wordList;
     
-    function _generateRandomPositions() {};
-    function _getCurrentPositions() {};
-    function _generateNeighbor() {};
-    function _acceptNeighbor() {};
+    function _init(options) {
+        wordList = options.wordList;
+        board = options.board;
+    };
+    
+    function _generateRandomPositions() {
+        
+        currentLayout = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffle();
+        
+        board.SetLayout(currentLayout);
+        
+        return _calculateEnergy(currentLayout);
+    };
+    
+    function _getCurrentPositions() {
+        return layout;
+    };
+    
+    function _generateNeighbor() {
+        var a, b, tmp;
+        
+        newLayout = currentLayout;
+        
+        a = _.random(0,newLayout.length);
+        b = _.random(1,newLayout.length);
+        if (a==b) { b--; }
+        
+        console.log("Swapping " + a + " with " + b);
+        
+        tmp = newLayout.charAt(b);
+        newLayout = setCharAt(newLayout, b, newLayout.charAt(a));
+        newLayout = setCharAt(newLayout, a, tmp);
+        
+        console.log(newLayout);
+        
+        return _calculateEnergy(newLayout);
+    };
+    
+    function _acceptNeighbor() {
+        currentLayout = newLayout;
+        console.log("Accepted: " + newLayout);
+        board.SetLayout(currentLayout);
+    };
+    
+    function _calculateEnergy(theLayout) {
+        return 10.1 + (Math.random() * 5.0);
+    };
     
     return {
         GenerateRandomPositions: function () {
@@ -343,23 +436,44 @@ var RSI = function () {
         GetCurrentPositions: function () {
             return _getCurrentPositions();
         },
-
+        
+      
         GenerateNeighbor: function () {
             return _generateNeighbor();
         },
 
         AcceptNeighbor: function () {
             _acceptNeighbor();
-        }
+        },
+        
+        Initialize: function (options) {
+            _init(options);
+        },
     };
 }();
 
+function timerTick() {
+    console.log("Step!");
+    var result = SimulatedAnnealing.Step();
+    $('#temperature').text(SimulatedAnnealing.GetCurrentTemperature());
+    $('#energy').text(SimulatedAnnealing.GetCurrentEnergy());
+    $('#iterations').text(SimulatedAnnealing.GetIterationCount());
+    
+    if (! result) {
+        setTimeout(timerTick, 50);
+    }
+}
 
 $(document).ready( function () {   
     var simulation;
    
     WordList.Initialize({ list: "words.json" });
-    Board.Initialize();
+    Board.Initialize( {layout: "ABCDEFGHIJKLMNOPQRSTUVWXYZ"} );
+    
+    RSI.Initialize({
+        board: Board,
+        wordList: WordList
+    });
     
     var paper = Raphael(0, 150, 512, 512);
     Board.Draw(paper);
@@ -369,19 +483,21 @@ $(document).ready( function () {
     $("#statistics").append("<div><strong>Temperature</strong>:<span id='temperature'>--</span></div>");
 
     SimulatedAnnealing.Initialize({
-        initialTemperature: 100.0,
+        initialTemperature: 10.0,
         initialStabilizer: 20,
         freezingTemperature: 0.0,
-        coolingFactor: 0.03,
+        coolingFactor: 0.3,
         stabilizingFactor: 1.005,
         
-        generateNewSolution: RSI.GenerateRandomPositions(),
-        generateNeighbor: RSI.GenerateNeighbor(),
-        acceptNeighbor: RSI.AcceptNeighbor(),
+        generateNewSolution: RSI.GenerateRandomPositions,
+        generateNeighbor: RSI.GenerateNeighbor,
+        acceptNeighbor: RSI.AcceptNeighbor
         
     });
 
-    setTimeout(simulation.Step(), 0);
+    
+    // Start the whole thing running
+    timerTick();
 
 });
 

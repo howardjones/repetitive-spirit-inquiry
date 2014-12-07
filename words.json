@@ -2677,9 +2677,6 @@
    "as" : {
       "frequency" : "281483"
    },
-   "immigrant" : {
-      "frequency" : ""
-   },
    "respond" : {
       "frequency" : "42139"
    },
@@ -6049,9 +6046,6 @@
    "meter" : {
       "frequency" : "10246"
    },
-   "healthcare" : {
-      "frequency" : ""
-   },
    "assist" : {
       "frequency" : "13748"
    },
@@ -6288,9 +6282,6 @@
    },
    "defendant" : {
       "frequency" : "9230"
-   },
-   "lot" : {
-      "frequency" : ""
    },
    "fool" : {
       "frequency" : "6990"

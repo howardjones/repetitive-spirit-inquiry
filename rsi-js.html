@@ -198,8 +198,7 @@ var WordList = (function () {
             // find the largest frequency, so we can scale the weights below
             max_frequency = _.max(_.keys(words), function(word){ return words[word].frequency; });
             max_frequency = words[max_frequency].frequency;
-            console.log(max_frequency);
-            
+
             // process each word, breaking it into letter-pairs and tracking their frequency
             _.each(words, function(value, key, list){
                 var i, pair;
@@ -207,19 +206,18 @@ var WordList = (function () {
                 // Calculate the weight of this word (its relative frequency)
                 var word_score = value.frequency / max_frequency;
                 words[word].score = word_score;
-                
+
                 // build up the frequencies of letter-pairs, weighted by the frequency of the words they are in
                 for (i = 0; i < (word.length-1); i++) {
                     pair = word.substring(i, i+2);
                     if (!pairs.hasOwnProperty(pair)) {
-                        pairs[pair] = 0;
+                        pairs[pair] = 0.0;
                     }
                     pairs[pair] += word_score;
                 }
             });            
             
             console.log("Processed " + _.size(pairs) +  " pairs");
-            console.log(pairs);
           },
           error:function(xhr, errormessage, errordetail) {
               console.log("Failed - " + errormessage);

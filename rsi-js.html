@@ -13,6 +13,10 @@
 <h1>Repetitive Spirit Enquiry</h1>
 <h2>All Client Side</h2>
 
+<div id="statistics">
+    
+</div>
+
 <script type="application/javascript">
 
 String.prototype.shuffle = function () {
@@ -68,20 +72,21 @@ var Board = (function () {
             {style: "four", x: -5, y: 1},
             {style: "four", x: -4, y: 2},
             
+            
+            {style: "extra", x: -4, y: -2},
             {style: "extra", x: -3, y: -3},
             {style: "extra", x: -1, y: -3},
             {style: "extra", x: 1, y: -3},
             {style: "extra", x: 3, y: -3},
             
+            {style: "extra", x: 4, y: -2},
+            {style: "extra", x: 5, y: 1},
             {style: "extra", x: 6, y: 0},
+            {style: "extra", x: 5, y: -1},
+            {style: "extra", x: 4, y: 2},
             
             {style: "extra", x: -5, y: -1},
-            {style: "extra", x: 5, y: 1},
-            {style: "extra", x: 5, y: -1},
             
-            {style: "extra", x: -4, y: -2},
-            {style: "extra", x: 4, y: 2},
-            {style: "extra", x: 4, y: -2},
         
         ];
         
@@ -246,6 +251,8 @@ var SimulatedAnnealing = (function () {
         currentSystemTemperature = 0.0,
         currentStabilizer        = 0.0,
         
+        iterations               = 0,
+        
         generateNewSolution      = null,
         generateNeighbor         = null,
         acceptNeighbor           = null;
@@ -254,6 +261,7 @@ var SimulatedAnnealing = (function () {
         coolingFactor            = options.coolingFactor;
         stabilizingFactor        = options.stabilizingFactor;
         freezingTemperature      = options.freezingTemperature;
+        
         generateNewSolution      = options.generateNewSolution;
         generateNeighbor         = options.generateNeighbor;
         acceptNeighbor           = options.acceptNeighbor;
@@ -318,14 +326,62 @@ var SimulatedAnnealing = (function () {
         
 })();
 
+var RSI = function () {
+    
+    var layout;
+    
+    function _generateRandomPositions() {};
+    function _getCurrentPositions() {};
+    function _generateNeighbor() {};
+    function _acceptNeighbor() {};
+    
+    return {
+        GenerateRandomPositions: function () {
+            return _generateRandomPositions();
+        },
+
+        GetCurrentPositions: function () {
+            return _getCurrentPositions();
+        },
+
+        GenerateNeighbor: function () {
+            return _generateNeighbor();
+        },
+
+        AcceptNeighbor: function () {
+            _acceptNeighbor();
+        }
+    };
+}();
+
 
 $(document).ready( function () {   
+    var simulation;
    
-    var paper = Raphael(0, 100, 512, 512);
-
     WordList.Initialize({ list: "words.json" });
     Board.Initialize();
+    
+    var paper = Raphael(0, 150, 512, 512);
     Board.Draw(paper);
+
+    $("#statistics").append("<div><strong>Iterations</strong>:<span id='iterations'>--</span></div>");
+    $("#statistics").append("<div><strong>Energy</strong>:<span id='energy'>--</span></div>");
+    $("#statistics").append("<div><strong>Temperature</strong>:<span id='temperature'>--</span></div>");
+
+    SimulatedAnnealing.Initialize({
+        initialTemperature: 100.0,
+        initialStabilizer: 20,
+        freezingTemperature: 0.0,
+        coolingFactor: 0.03,
+        stabilizingFactor: 1.005,
+        
+        generateNewSolution: RSI.GenerateRandomPositions(),
+        generateNeighbor: RSI.GenerateNeighbor(),
+        acceptNeighbor: RSI.AcceptNeighbor(),
+        
+    });
+
+    setTimeout(simulation.Step(), 0);
 
 });
 
